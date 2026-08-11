@@ -1,0 +1,13 @@
+{
+  "name": "simple_reviewer_node",
+  "version": "1.0.0",
+  "description": "Port of Simple_Reviewer PHP backend to Node.js/Express",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.3.0"
+  }
+}

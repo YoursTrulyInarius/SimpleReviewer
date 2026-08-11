@@ -1,0 +1,577 @@
+/* 
+   Simple Reviewer - Custom Flat Stylesheet
+   Strictly avoids gradients. Utilizes flat, high-contrast, premium color schemes.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-color: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --primary-color: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-light: #e0e7ff;
+    --success-color: #10b981;
+    --success-light: #d1fae5;
+    --danger-color: #ef4444;
+    --danger-light: #fee2e2;
+    --warning-color: #f59e0b;
+    --warning-light: #fef3c7;
+    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --card-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+    --transition-speed: 0.25s;
+    --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* Bootstrap variable overrides for light theme */
+    --bs-body-bg: #f8fafc;
+    --bs-body-color: #0f172a;
+    --bs-secondary-color: #64748b;
+}
+
+[data-theme="dark"] {
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-color: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-light: #2e2a87;
+    --success-color: #10b981;
+    --success-light: #064e3b;
+    --danger-color: #f43f5e;
+    --danger-light: #4c0519;
+    --warning-color: #fbbf24;
+    --warning-light: #78350f;
+    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --card-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+
+    /* Bootstrap variable overrides for dark theme */
+    --bs-body-bg: #0f172a;
+    --bs-body-color: #f8fafc;
+    --bs-secondary-color: #94a3b8;
+    --bs-card-bg: #1e293b;
+    --bs-card-color: #f8fafc;
+    --bs-border-color: #334155;
+}
+
+/* Force dark theme overrides on Bootstrap utility classes */
+[data-theme="dark"] .text-body,
+[data-theme="dark"] a.text-body {
+    color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .text-muted {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .bg-white {
+    background-color: var(--card-bg) !important;
+}
+
+[data-theme="dark"] .bg-light {
+    background-color: var(--bg-color) !important;
+    color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .border-light-subtle {
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(1) brightness(2);
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-family);
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Typography and Headings */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+/* Custom Cards */
+.card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: var(--card-shadow);
+    color: var(--text-color);
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed), background-color var(--transition-speed), border-color var(--transition-speed);
+}
+
+.card:hover {
+    box-shadow: var(--card-shadow-lg);
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1.25rem 1.5rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.card-body {
+    color: var(--text-color);
+}
+
+.card-footer {
+    background-color: transparent;
+    border-top: 1px solid var(--border-color);
+    padding: 1rem 1.5rem;
+}
+
+/* Custom Flat Buttons */
+.btn {
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.55rem 1.3rem;
+    transition: all var(--transition-speed) ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff !important;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: #ffffff !important;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:focus {
+    background-color: var(--primary-color);
+    color: #ffffff !important;
+}
+
+.btn-light {
+    background-color: var(--border-color);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.btn-light:hover {
+    background-color: var(--text-muted);
+    border-color: var(--text-muted);
+    color: var(--card-bg);
+}
+
+/* Drag & Drop File Zone */
+.drag-zone {
+    border: 2px dashed var(--primary-color);
+    background-color: var(--card-bg);
+    border-radius: 16px;
+    padding: 3.5rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color var(--transition-speed), border-color var(--transition-speed), transform 0.15s ease;
+}
+
+.drag-zone:hover, .drag-zone.dragover {
+    background-color: var(--primary-light);
+    transform: scale(1.01);
+}
+
+.drag-zone i {
+    color: var(--primary-color);
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Reviewer Cards Dashboard */
+.reviewer-card {
+    height: 100%;
+    cursor: pointer;
+}
+
+.reviewer-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary-color);
+}
+
+/* Tabs Navigation */
+.nav-pills .nav-link {
+    color: var(--text-muted);
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.65rem 1.3rem;
+    margin-right: 0.5rem;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.nav-pills .nav-link:hover {
+    color: var(--text-color);
+    background-color: var(--border-color);
+}
+
+.nav-pills .nav-link.active {
+    background-color: var(--primary-color);
+    color: #ffffff !important;
+}
+
+/* Flashcards Container & Flipping Effect */
+.flashcard-container {
+    perspective: 1000px;
+    -webkit-perspective: 1000px;
+    width: 100%;
+    max-width: 550px;
+    height: 320px;
+    margin: 2rem auto;
+    cursor: pointer;
+}
+
+.flashcard {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+    -webkit-transition: -webkit-transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+    box-shadow: var(--card-shadow-lg);
+    border-radius: 16px;
+}
+
+.flashcard-container.is-flipped .flashcard {
+    transform: rotateY(180deg);
+    -webkit-transform: rotateY(180deg);
+}
+
+.flashcard-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+}
+
+.flashcard-face.front {
+    color: var(--text-color);
+}
+
+.flashcard-face.back {
+    transform: rotateY(180deg);
+    -webkit-transform: rotateY(180deg);
+    background-color: var(--card-bg);
+    border-color: var(--primary-color);
+    color: var(--text-color);
+}
+
+.card-index {
+    position: absolute;
+    top: 1.25rem;
+    left: 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.card-hint {
+    position: absolute;
+    bottom: 1.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* Custom Quiz Controls */
+.quiz-choice-btn {
+    width: 100%;
+    text-align: left;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 1.1rem 1.35rem;
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+}
+
+.quiz-choice-btn:hover {
+    border-color: var(--primary-color);
+    background-color: var(--bg-color);
+}
+
+.quiz-choice-btn.selected {
+    border-color: var(--primary-color);
+    background-color: var(--primary-light);
+    color: var(--text-color);
+}
+
+.quiz-choice-btn.correct {
+    border-color: var(--success-color) !important;
+    background-color: var(--success-light) !important;
+    color: var(--text-color) !important;
+    font-weight: 600;
+}
+
+.quiz-choice-btn.incorrect {
+    border-color: var(--danger-color) !important;
+    background-color: var(--danger-light) !important;
+    color: var(--text-color) !important;
+    font-weight: 600;
+}
+
+/* Fill-in-the-blank styling */
+.fill-blank-input {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    transition: border-color 0.2s;
+    font-weight: 600;
+}
+
+.fill-blank-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.fill-blank-input.correct {
+    border-color: var(--success-color) !important;
+    background-color: var(--success-light) !important;
+    color: var(--text-color) !important;
+}
+
+.fill-blank-input.incorrect {
+    border-color: var(--danger-color) !important;
+    background-color: var(--danger-light) !important;
+    color: var(--text-color) !important;
+}
+
+/* Markdown reviewer content styling */
+.reviewer-content {
+    line-height: 1.8;
+    font-size: 1.05rem;
+    color: var(--text-color);
+}
+
+.reviewer-content h1, .reviewer-content h2, .reviewer-content h3 {
+    margin-top: 1.75rem;
+    margin-bottom: 1.1rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.reviewer-content p {
+    margin-bottom: 1.1rem;
+    color: var(--text-color);
+}
+
+.reviewer-content ul, .reviewer-content ol {
+    margin-bottom: 1.4rem;
+    padding-left: 1.5rem;
+}
+
+.reviewer-content li {
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.reviewer-content strong {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .reviewer-content strong {
+    color: var(--primary-hover);
+}
+
+.reviewer-content blockquote {
+    border-left: 4px solid var(--primary-color);
+    padding: 0.5rem 1rem;
+    margin: 1rem 0;
+    background-color: var(--bg-color);
+    border-radius: 0 8px 8px 0;
+    color: var(--text-muted);
+}
+
+/* Custom form elements */
+.form-control, .form-select {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    transition: border-color var(--transition-speed), background-color var(--transition-speed);
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border-color: var(--primary-color);
+    box-shadow: none;
+}
+
+/* Theme Switcher */
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.theme-switch {
+    display: inline-block;
+    height: 24px;
+    position: relative;
+    width: 44px;
+}
+
+.theme-switch input {
+    display:none;
+}
+
+.slider {
+    background-color: var(--border-color);
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    background-color: #fff;
+    bottom: 4px;
+    content: "";
+    height: 16px;
+    left: 4px;
+    position: absolute;
+    transition: .4s;
+    width: 16px;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+/* Footer layout */
+footer {
+    background-color: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    padding: 1.5rem 0;
+    margin-top: auto;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+/* Progress and Spinner */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    background-color: var(--border-color);
+}
+
+.progress-bar {
+    background-color: var(--primary-color);
+}
+
+.spinner-border-primary {
+    color: var(--primary-color);
+}
+
+/* ==========================================
+   Responsiveness & Mobile Adjustments
+   ========================================== */
+@media (max-width: 991.98px) {
+    .drag-zone {
+        padding: 2.5rem 1.5rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body {
+        font-size: 0.95rem;
+    }
+    .flashcard-container {
+        height: 270px;
+        margin: 1.5rem auto;
+    }
+    .flashcard-face {
+        padding: 1.5rem;
+    }
+    .flashcard-face p.fs-5 {
+        font-size: 1.1rem !important;
+    }
+    .reviewer-content {
+        font-size: 0.98rem;
+    }
+    .nav-pills .nav-link {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .flashcard-container {
+        height: 240px;
+    }
+    .flashcard-face {
+        padding: 1.1rem;
+    }
+    .flashcard-face p.fs-5 {
+        font-size: 1rem !important;
+    }
+    .quiz-choice-btn {
+        padding: 0.85rem 1.1rem;
+        font-size: 0.92rem;
+    }
+    .nav-pills {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+    .nav-pills .nav-item {
+        width: 100%;
+    }
+    .nav-pills .nav-link {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 0.25rem;
+        text-align: left;
+    }
+}
