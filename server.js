@@ -9,13 +9,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve static site files from the project root
-app.use(express.static(path.join(__dirname)));
-
 let pool;
 
 async function start() {
   pool = await init();
+
 
   app.all('/process.php', async (req, res) => {
     res.type('application/json');
@@ -123,6 +121,10 @@ async function start() {
       return res.json({ success: false, message: String(err.message || err) });
     }
   });
+
+  // Serve static site files AFTER the /process.php route so the
+  // route handler takes priority over serving process.php as a raw file.
+  app.use(express.static(path.join(__dirname)));
 
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
