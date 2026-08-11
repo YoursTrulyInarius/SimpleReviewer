@@ -589,7 +589,7 @@ function readPdfFile(file) {
                         pageText += item.str + ' ';
                         lastY = item.transform[5];
                     }
-                    text += pageText + '\n';
+                    text += pageText.trimEnd() + '\n\n';
                 }
                 resolve(text);
             } catch (err) {
@@ -697,29 +697,43 @@ async function pptxHasEntry(zip, path) {
 }
 
 function extractTextFromPptxXml(xmlDoc) {
-    const texts = [];
+    // Collect text paragraph by paragraph so bullets / list items become
+    // separate lines that TextAnalyzer can parse as individual sentences.
+    const paragraphTexts = [];
 
-    function traverse(node) {
-        if (!node) return;
-
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            const nodeName = node.localName || node.nodeName || '';
-            if (nodeName.toLowerCase() === 't') {
-                const text = node.textContent || '';
-                if (text.trim()) {
-                    texts.push(text.trim());
+    function collectParagraph(node) {
+        const texts = [];
+        function traverse(n) {
+            if (!n) return;
+            if (n.nodeType === Node.ELEMENT_NODE) {
+                const name = (n.localName || n.nodeName || '').toLowerCase();
+                if (name === 't') {
+                    const t = (n.textContent || '').trim();
+                    if (t) texts.push(t);
+                    return;
                 }
-                return;
             }
+            for (let child = n.firstChild; child; child = child.nextSibling) traverse(child);
         }
-
-        for (let child = node.firstChild; child; child = child.nextSibling) {
-            traverse(child);
-        }
+        traverse(node);
+        return texts.join(' ');
     }
 
-    traverse(xmlDoc.documentElement || xmlDoc);
-    return texts.join(' ');
+    function walkForParagraphs(node) {
+        if (!node) return;
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const name = (node.localName || node.nodeName || '').toLowerCase();
+            if (name === 'p') { // <a:p> paragraph element
+                const pText = collectParagraph(node);
+                if (pText) paragraphTexts.push(pText);
+                return; // don't recurse into sub-paragraphs
+            }
+        }
+        for (let child = node.firstChild; child; child = child.nextSibling) walkForParagraphs(child);
+    }
+
+    walkForParagraphs(xmlDoc.documentElement || xmlDoc);
+    return paragraphTexts.join('\n');
 }
 
 async function pptxReadEntry(zip, path) {
