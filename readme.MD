@@ -1,5 +1,5 @@
 # Simple Reviewer
-i give 
+i 
 **THIS IS A PERSONAL PROJECT, I'M TIRED OF READING EVERYTHING AT ONCE.** 
 
 I created this to make everything easier. Please note that this system is still not accurate; it needs improvements for the questionnaires, flashcards, and more. 
