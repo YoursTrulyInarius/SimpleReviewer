@@ -1,6 +1,6 @@
 # Simple Reviewer
 
-i hate this sysyem, it keeps 
+i hate this sysyem, 
 
 **THIS IS A PERSONAL PROJECT, I'M TIRED OF READING EVERYTHING AT ONCE.** 
 
