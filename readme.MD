@@ -1,6 +1,6 @@
 # Simple Reviewer
 **THIS IS A PERSONAL PROJECT, I'M TIRED OF READING EVERYTHING AT ONCE.** 
-
+v.1.4
 I created this to make everything easier. Please note that this system is still not accurate; it needs improvements for the questionnaires, flashcards, and more. 
 
 > **Known Issues:** Instead of asking "Who is Jeb?", it asks "What is Jeb?". Issues will be fixed later, since I'm still tired at the moment.
