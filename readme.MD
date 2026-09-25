@@ -1,8 +1,8 @@
 # Simple Reviewer
 **THIS IS A PERSONAL PROJECT, I'M TIRED OF READING EVERYTHING AT ONCE.** 
-I created this to make everything easier. Please note that this system is still not accurate; it needs improvements for the questionnaires, flashcards, and more. 
+I created this to make study sessions faster and easier by automatically converting documents into structured study guides, interactive 3D flashcards, and practice quizzes.
 
-> **Known Issues:** Instead of asking "Who is Jeb?", it asks "What is Jeb?". Issues will be fixed later, since I'm still tired at the moment.
+> **v2.0 Updates:** Upgraded file parsing accuracy (multi-column PDF de-interleaving, PPTX speaker notes & bullet hierarchy, DOCX structured headings), modernized the UI design with glassmorphism & 3D tactile flashcards, and resolved entity question accuracy (e.g. properly generates "Who is Jeb?").
 
 ---
 

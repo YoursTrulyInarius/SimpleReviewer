@@ -1,36 +1,68 @@
-// Full-document aware TextAnalyzer
-// Reads and samples from the entire document proportionally instead of
-// truncating to the first N sentences.
+// Upgraded TextAnalyzer Engine
+// Features: Full document awareness, Entity Categorization (Person, Concept, Date, Process, Location),
+// Smart Distractor Generation, Precision Filtering, and Section-aware Study Guides.
 
 class TextAnalyzer {
   constructor(text) {
-    this.rawText   = this.normalizeText(String(text || ''));
-    this.sentences = this.parseSentences(this.rawText);
+    this.rawText = this.normalizeText(String(text || ''));
+    this.sections = this.parseSections(this.rawText);
     this.paragraphs = this.parseParagraphs(this.rawText);
-    this.chunks    = this.chunkDocument(this.paragraphs);
+    this.sentences = this.parseSentences(this.rawText);
+    this.chunks = this.chunkDocument(this.paragraphs);
     this.definitions = this.findDefinitions();
-    this.names       = this.extractNames();
-    this.figures     = this.extractFigures();
-    this.keyTerms    = this.findKeyTerms();
+    this.names = this.extractNames();
+    this.figures = this.extractFigures();
+    this.keyTerms = this.findKeyTerms();
   }
 
-  /* ─── Normalisation ───────────────────────────────────────────────── */
+  /* ─── Normalization ───────────────────────────────────────────────── */
   normalizeText(text) {
     text = text.replace(/\r\n|\r/g, '\n');
-    // Em dashes / en dashes → preserve as " - " (but NOT hyphens in hyphenated words)
+    // Normalize unicode typographic characters
     text = text.replace(/[\u2014\u2013\u2012\u2011]/g, ' - ');
     text = text.replace(/[\u2018\u2019]/g, "'");
     text = text.replace(/[\u201C\u201D]/g, '"');
     text = text.replace(/\u2026/g, '...');
     text = text.replace(/\u00A0/g, ' ');
-    // collapse runs of 3+ blank lines to exactly two (paragraph break)
+    text = text.replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '- ');
+
+    // Normalize spacing after sentence endings if jammed together
+    text = text.replace(/([.!?])(?=([A-Z0-9"'\(]))/g, '$1 ');
+
+    // Collapse multiple blank lines to at most two
     text = text.replace(/\n{3,}/g, '\n\n');
-    // Trim trailing whitespace from each line
-    text = text.split('\n').map(l => l.trimEnd()).join('\n');
-    return text;
+
+    // Trim trailing whitespace from lines
+    return text.split('\n').map(l => l.trimEnd()).join('\n');
   }
 
   /* ─── Parsing ─────────────────────────────────────────────────────── */
+  parseSections(text) {
+    const lines = text.split('\n');
+    const sections = [];
+    let currentTitle = 'Introduction & Overview';
+    let currentLines = [];
+
+    for (const line of lines) {
+      const headerMatch = line.match(/^#{1,3}\s+(.+)$/);
+      if (headerMatch) {
+        if (currentLines.length > 0) {
+          sections.push({ title: currentTitle, content: currentLines.join('\n').trim() });
+          currentLines = [];
+        }
+        currentTitle = headerMatch[1].trim();
+      } else {
+        currentLines.push(line);
+      }
+    }
+
+    if (currentLines.length > 0) {
+      sections.push({ title: currentTitle, content: currentLines.join('\n').trim() });
+    }
+
+    return sections;
+  }
+
   parseParagraphs(text) {
     return text
       .split(/\n{2,}/)
@@ -43,21 +75,22 @@ class TextAnalyzer {
     const sentences = [];
 
     const addSentence = (s) => {
-      s = s.trim();
+      s = s.trim().replace(/^[-*•]\s+/, '');
       if (s.length < 20 || s.length > 1200) return;
-      // Skip lines that are obviously metadata / document codes
-      // (e.g. "PICG-12MODERN-C" — all-caps alphanumeric tokens)
       if (/^[A-Z0-9][\w\-]{0,30}$/.test(s)) return;
       const key = s.toLowerCase();
-      if (!seen.has(key)) { seen.add(key); sentences.push(s); }
+      if (!seen.has(key)) {
+        seen.add(key);
+        sentences.push(s);
+      }
     };
 
-    // 1. Line-by-line pass (catches bullet points, numbered lists, etc.)
+    // 1. Line-by-line pass (lists, bullets, headers)
     for (const line of text.split('\n').map(l => l.trim()).filter(Boolean)) {
-      addSentence(line);
+      if (!line.startsWith('#')) addSentence(line);
     }
 
-    // 2. Sentence-split pass on the whole text (catches long prose paragraphs)
+    // 2. Sentence-split pass across paragraphs
     const flat = text.replace(/\n+/g, ' ');
     for (const s of flat.split(/(?<=[.!?])\s+(?=[A-Z"'\(0-9])/)) {
       addSentence(s);
@@ -66,27 +99,15 @@ class TextAnalyzer {
     return sentences;
   }
 
-  /**
-   * Returns true if the string looks like a real explanatory sentence
-   * (not a slide heading, bullet label, or metadata token).
-   *
-   * Requirements:
-   *  - At least 7 words
-   *  - At least one lowercase word after position 0 (rules out pure Title Case headings)
-   *  - Contains at least one verb-like signal word
-   */
   _isRealSentence(s) {
     const words = s.trim().split(/\s+/);
-    if (words.length < 7) return false;
-    // At least two words (not first) must start lowercase
+    if (words.length < 6) return false;
     const lowercaseCount = words.slice(1).filter(w => w.length > 1 && /^[a-z]/.test(w)).length;
     if (lowercaseCount < 2) return false;
-    // Must contain at least one verb-signal word
-    const verbSignals = /\b(?:is|are|was|were|has|have|had|refers|means|describes|involves|includes|affects|causes|leads|results|allows|requires|provides|represents|defines|consists|occurs|develops|enables|prevents|supports|indicates|suggests|demonstrates|shows|explains|states|notes|found|used|known|called|considered|based|related|associated|connected|linked|derived|created|formed|produced|caused|affected|influenced|characterized|determined|established|identified|recognized|classified|distinguished|separated|combined|integrated|analyzed|evaluated|measured|observed|recorded|reported|studied|examined|investigated|applied|implemented|developed|designed|constructed|built|made|produced)\b/i;
+    const verbSignals = /\b(?:is|are|was|were|has|have|had|refers|means|describes|involves|includes|affects|causes|leads|results|allows|requires|provides|represents|defines|consists|occurs|develops|enables|prevents|supports|indicates|suggests|demonstrates|shows|explains|states|notes|found|used|known|called|considered|based|related|associated|connected|linked|derived|created|formed|produced|characterized|determined|identified|distinguished|integrated|analyzed|evaluated|measured|observed|recorded|studied|examined|applied|implemented|designed)\b/i;
     return verbSignals.test(s);
   }
 
-  /* ─── Chunk document into N equal sections ────────────────────────── */
   chunkDocument(paragraphs, chunkCount = 10) {
     if (paragraphs.length <= chunkCount) {
       return paragraphs.map(p => [p]);
@@ -99,123 +120,253 @@ class TextAnalyzer {
     return chunks;
   }
 
-  /* ─── Definitions ─────────────────────────────────────────────────── */
+  /* ─── Entity Classification Helpers ────────────────────────────────── */
+  isPerson(term, def = '') {
+    const t = term.trim();
+    const d = (def || '').toLowerCase();
+
+    // Check honorifics
+    if (/\b(?:Dr\.|Mr\.|Mrs\.|Ms\.|Prof\.|President|King|Queen|Pope|Sir|Lord|Prime Minister|General|Emperor|Saint)\b/i.test(t)) {
+      return true;
+    }
+
+    // Person indicators in definition
+    const personDefSignals = [
+      'person who', 'individual who', 'physicist', 'scientist', 'philosopher',
+      'author', 'writer', 'developer', 'programmer', 'creator of', 'inventor',
+      'founder of', 'mathematician', 'artist', 'psychologist', 'biologist',
+      'historian', 'leader', 'explorer', 'born in', 'died in', 'who introduced',
+      'who proposed', 'who discovered', 'who formulated', 'who was', 'who served as',
+      'ruler of', 'statesman', 'theorist', 'scholar', 'architect of'
+    ];
+
+    if (personDefSignals.some(signal => d.includes(signal))) {
+      return true;
+    }
+
+    // Capitalized two-word proper name heuristic (e.g. "Jeb Bush", "Alan Turing")
+    // Ensure words are capitalized and not common stop words
+    const words = t.split(/\s+/);
+    if (words.length >= 2 && words.length <= 4) {
+      const allCap = words.every(w => /^[A-Z][a-z]+$/.test(w));
+      const stopWords = new Set(['The', 'A', 'An', 'In', 'On', 'At', 'For', 'With', 'And', 'Chapter', 'Section', 'Figure', 'Table', 'Slide']);
+      if (allCap && !words.some(w => stopWords.has(w))) {
+        // If the definition contains "he", "his", "she", "her", "who"
+        if (/\b(he|his|she|her|who|whose)\b/i.test(d)) return true;
+      }
+    }
+
+    // Check against single-word famous names or extracted names
+    if (this.names && this.names.includes(t)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  isProcessOrMethod(term, def = '') {
+    const d = (def || '').toLowerCase();
+    const t = term.toLowerCase();
+    if (/\b(process|method|technique|procedure|mechanism|protocol|cycle|algorithm|system)\b/.test(t)) return true;
+    return /\b(process by which|method of|technique used|procedure for|mechanism of|steps involved in|way in which)\b/.test(d);
+  }
+
+  isDateOrPeriod(term, def = '') {
+    const t = term.trim();
+    const d = (def || '').toLowerCase();
+    if (/^\b(?:\d{4}s?|\d{1,2}(?:st|nd|rd|th)\s+century|bce?|ce)\b/i.test(t)) return true;
+    return /\b(period during|era when|year in which|date of|took place in|occurred between)\b/.test(d);
+  }
+
+  isLocation(term, def = '') {
+    const d = (def || '').toLowerCase();
+    return /\b(country in|city in|region of|located in|capital of|continent of|island in|mountain range|province)\b/.test(d);
+  }
+
+  isPlural(term) {
+    const t = term.trim();
+    if (t.endsWith('ies') || t.endsWith('es') || (t.endsWith('s') && !t.endsWith('ss') && !t.endsWith('us') && !t.endsWith('is'))) {
+      return true;
+    }
+    return false;
+  }
+
+  formatQuestionForTerm(term, def = '') {
+    const t = term.trim();
+    if (this.isPerson(t, def)) {
+      const pastVerb = /\b(?:was|died|served|developed|invented|discovered|founded|introduced)\b/i.test(def);
+      return pastVerb ? `Who was ${t}?` : `Who is ${t}?`;
+    }
+    if (this.isDateOrPeriod(t, def)) {
+      return `When did ${t} occur?`;
+    }
+    if (this.isLocation(t, def)) {
+      return `Where or what is ${t}?`;
+    }
+    if (this.isProcessOrMethod(t, def)) {
+      return `How does the process of ${t} work?`;
+    }
+    return this.isPlural(t) ? `What are ${t}?` : `What is ${t}?`;
+  }
+
+  /* ─── Definitions Extraction ───────────────────────────────────────── */
   findDefinitions() {
     const defs = {};
 
-    // Validate that a captured definition is actually meaningful
+    const blacklistTerms = new Set([
+      'this', 'it', 'these', 'those', 'there', 'here', 'he', 'she', 'they', 'we', 'you',
+      'one', 'which', 'that', 'such', 'figure', 'table', 'section', 'chapter', 'slide',
+      'page', 'example', 'note', 'notice', 'important', 'summary', 'introduction',
+      'conclusion', 'source', 'references', 'title', 'module', 'unit', 'step', 'objective',
+      'overview', 'outcome', 'part', 'key', 'total', 'definition', 'definitions',
+      'question', 'answer', 'review', 'reviewer', 'study guide', 'terms'
+    ]);
+
     const isValidDef = (term, def) => {
       if (!term || !def) return false;
-      const t = term.trim();
-      const d = def.trim();
-      // Term: 2–50 chars, at most 5 words (prevents merged heading pairs)
-      if (t.length < 2 || t.length > 50) return false;
-      if (t.split(/\s+/).length > 5) return false;
+      let t = term.trim().replace(/^[\*\-_#\s]+|[\*\-_#\s]+$/g, '');
+      let d = def.trim().replace(/^[\*\-_#\s]+|[\*\-_#\s]+$/g, '');
+
+      // Check length and word count
+      if (t.length < 2 || t.length > 55) return false;
+      const tWords = t.split(/\s+/);
+      if (tWords.length > 5) return false;
+
+      // Disallow blacklisted subjects
+      const tLower = t.toLowerCase();
+      if (blacklistTerms.has(tLower)) return false;
+      if (blacklistTerms.has(tWords[0].toLowerCase()) && tWords.length === 1) return false;
+
+      // Disallow starting with conjunctions or prepositions
+      if (/^(and|or|because|although|however|therefore|moreover|furthermore|in addition|for example|such as|according to|based on)\b/i.test(t)) {
+        return false;
+      }
+
       // Definition must be substantial
-      if (d.length < 25) return false;
-      const defWords = d.split(/\s+/).filter(w => w.length > 0);
-      if (defWords.length < 5) return false;
-      // Reject metadata codes (e.g. "PICG-12MODERN-C", "ABC123")
-      if (/^[A-Z0-9][\w\-]{0,30}$/.test(d)) return false;
-      // Reject all-uppercase definitions
-      if (d === d.toUpperCase() && d.length > 5) return false;
+      if (d.length < 20) return false;
+      const dWords = d.split(/\s+/).filter(Boolean);
+      if (dWords.length < 4) return false;
+
+      // Prevent circular definitions (e.g. "Biology is biology")
+      if (dLower(d).startsWith(tLower + ' ') || dLower(d) === tLower) return false;
+
+      // Reject all-caps codes or metadata
+      if (/^[A-Z0-9][\w\-]{0,25}$/.test(d)) return false;
+      if (d === d.toUpperCase() && d.length > 10) return false;
+
       return true;
     };
 
-    // Build a version of the text where soft line-breaks within a paragraph
-    // are joined so multi-line definitions are captured in full.
-    const joinedSentences = this.paragraphs.map(p => p.replace(/\n/g, ' '));
+    function dLower(str) { return (str || '').toLowerCase(); }
+
+    const joinedParagraphs = this.paragraphs.map(p => p.replace(/\n/g, ' '));
 
     const patterns = [
-      // "X is/are/was/were (a/an/the) …" — greedy up to period or end-of-string
-      /(?:The\s+|A\s+|An\s+)?([A-Z][\w\s]{2,50}?)\s+(?:is|are|was|were)\s+(?:a|an|the)?\s*(.+?)(?:\.|$)/,
-      // "X: Definition" or "X - Definition" (definition side must start with capital)
-      /^([A-Z][\w\s]{2,40}?)\s*[-:]\s*([A-Z].+?)(?:\.|$)/,
-      // "X refers to / means / denotes …"
-      /([A-Z][\w\s]{2,40}?)\s+(?:refers to|means|denotes|describes|involves)\s+(.+?)(?:\.|$)/,
+      // Markdown bold definition: **Term**: Definition or **Term** — Definition
+      /\*\*(.+?)\*\*\s*(?:[-:—–]|is|are|means)\s*(.+?)(?:\.|$)/,
+      // "Term: Definition" or "Term - Definition"
+      /^([A-Z][\w\s]{2,40}?)\s*[-:—–]\s*([A-Z].+?)(?:\.|$)/,
+      // "X is/are/was/were (a/an/the) ..."
+      /(?:The\s+|A\s+|An\s+)?([A-Z][\w\s]{2,45}?)\s+(?:is|are|was|were)\s+(?:a|an|the)?\s*(.+?)(?:\.|$)/,
+      // "X refers to / means / denotes / describes ..."
+      /([A-Z][\w\s]{2,45}?)\s+(?:refers to|means|denotes|describes|is defined as|is known as)\s+(.+?)(?:\.|$)/,
     ];
 
-    // Match on joined paragraph text to avoid line-break truncation
-    for (const ps of joinedSentences) {
+    for (const ps of joinedParagraphs) {
       for (const p of patterns) {
         const m = ps.match(p);
         if (m) {
-          const term = m[1].trim();
-          const def  = (m[2] || '').trim();
-          const termKey = term.toLowerCase();
-          if (isValidDef(term, def) && !(termKey in defs)) {
-            defs[term] = def;
+          const rawTerm = m[1].trim().replace(/^[\*\-_]+|[\*\-_]+$/g, '');
+          const rawDef = (m[2] || '').trim().replace(/^[\*\-_]+|[\*\-_]+$/g, '');
+          const termKey = rawTerm.toLowerCase();
+          if (isValidDef(rawTerm, rawDef) && !(termKey in defs)) {
+            defs[rawTerm] = rawDef.replace(/[.]+$/, '');
           }
         }
       }
     }
+
     return defs;
   }
 
-  /* ─── Named entities & figures ───────────────────────────────────── */
+  /* ─── Named Entities & Figures ─────────────────────────────────────── */
   extractNames() {
     const names = new Set();
+    const blacklist = new Set(['Chapter', 'Section', 'Figure', 'Table', 'Slide', 'Page', 'Module', 'Unit', 'United States', 'New York', 'North America', 'Western Europe']);
+
     for (const s of this.sentences) {
-      // Require title/honorific OR two consecutive capitalized words
-      const m = s.match(/\b(?:Dr\.|Mr\.|Mrs\.|Ms\.|Prof\.)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b|\b([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,3})\b/g);
-      if (m) for (const name of m) names.add(name.trim());
+      // With title/honorific (e.g. Dr. Alan Turing, Prof. Smith)
+      const mHonorific = s.match(/\b(?:Dr\.|Mr\.|Mrs\.|Ms\.|Prof\.|President|King|Queen|Pope|Sir|Lord)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b/g);
+      if (mHonorific) {
+        for (const h of mHonorific) names.add(h.trim());
+      }
+
+      // Two consecutive capitalized words (names)
+      const mNames = s.match(/\b([A-Z][a-z]{2,}\s+[A-Z][a-z]{2,})\b/g);
+      if (mNames) {
+        for (const name of mNames) {
+          const trimmed = name.trim();
+          if (!blacklist.has(trimmed)) names.add(trimmed);
+        }
+      }
     }
-    return Array.from(names).slice(0, 100);
+    return Array.from(names).slice(0, 80);
   }
 
   extractFigures() {
     const figs = new Set();
     for (const s of this.sentences) {
       const m = s.match(/\b(?:\$?\d+(?:\.\d+)?%?|\d{4}s?)\b/gi);
-      if (m) for (const f of m) if (f.length >= 2) figs.add(f);
+      if (m) {
+        for (const f of m) {
+          if (f.length >= 2 && !/^(19|20)\d{2}$/.test(f) || /^\d{4}$/.test(f)) {
+            figs.add(f.trim());
+          }
+        }
+      }
     }
-    return Array.from(figs).slice(0, 100);
+    return Array.from(figs).slice(0, 80);
   }
 
-  /* ─── Key terms (noun phrases, frequency-adaptive) ─────────────────── */
+  /* ─── Key Terms ────────────────────────────────────────────────────── */
   findKeyTerms() {
     const freq = {};
-    const m1 = this.rawText.match(/\b([A-Z][a-z]{1,}(?:\s+[A-Z][a-z]{1,}){1,4})\b/g) || [];
-    for (const t of m1) {
+    const matches = this.rawText.match(/\b([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){0,3})\b/g) || [];
+    const stopWords = new Set(['The', 'This', 'That', 'These', 'Those', 'There', 'Here', 'What', 'When', 'Where', 'Why', 'How', 'Chapter', 'Section', 'Figure', 'Table', 'Slide', 'Page', 'Example']);
+
+    for (const t of matches) {
       const key = t.trim();
-      if (key.length > 2) freq[key] = (freq[key] || 0) + 1;
+      if (key.length > 2 && !stopWords.has(key)) {
+        freq[key] = (freq[key] || 0) + 1;
+      }
     }
-    // Use ≥2 frequency for larger documents; ≥1 for short ones
-    const totalMatches = m1.length;
-    const minFreq = totalMatches > 50 ? 2 : 1;
+
+    const minFreq = Object.keys(freq).length > 40 ? 2 : 1;
     return Object.entries(freq)
       .filter(([, v]) => v >= minFreq)
       .sort((a, b) => b[1] - a[1])
       .map(x => x[0])
-      .slice(0, 150);
+      .slice(0, 120);
   }
 
-  /* ─── Helpers ─────────────────────────────────────────────────────── */
   shortenAnswer(ans) {
     if (!ans) return ans;
-    if (ans.length <= 200) return ans;
-    const parts = ans.split(/(?<=[.!?])\s+/);
-    return parts[0];
+    let clean = ans.trim();
+    if (clean.length <= 160) return clean;
+    const parts = clean.split(/(?<=[.!?])\s+/);
+    return parts[0].length <= 160 ? parts[0] : parts[0].substring(0, 157) + '...';
   }
 
-  /**
-   * Returns up to `perChunk` REAL sentences from each document chunk.
-   * Headings and short labels are excluded.
-   */
   _sampleSentences(perChunk = 3) {
     const sampled = [];
-
     for (const chunk of this.chunks) {
       const chunkText = chunk.join(' ').toLowerCase();
-      // Only collect real sentences that belong to this chunk
       const chunkSentences = this.sentences.filter(s =>
         this._isRealSentence(s) &&
-        chunkText.includes(s.toLowerCase().substring(0, Math.min(50, s.length)))
+        chunkText.includes(s.toLowerCase().substring(0, Math.min(40, s.length)))
       );
       sampled.push(...chunkSentences.slice(0, perChunk));
     }
-
-    // dedupe while preserving order
     const seen = new Set();
     return sampled.filter(s => {
       const k = s.toLowerCase();
@@ -225,42 +376,53 @@ class TextAnalyzer {
     });
   }
 
-  /* ─── Study Guide ─────────────────────────────────────────────────── */
+  /* ─── Study Guide Generation ───────────────────────────────────────── */
   generateStudyGuide() {
     let output = '## Document Overview\n\n';
 
-    // Pick a representative REAL sentence from each chunk
-    const overviewSentences = [];
-    for (const chunk of this.chunks) {
-      const chunkText = chunk.join(' ').toLowerCase();
-      const candidate = this.sentences.find(s =>
-        this._isRealSentence(s) &&
-        s.length >= 40 &&
-        chunkText.includes(s.toLowerCase().substring(0, Math.min(50, s.length)))
-      );
-      if (candidate) overviewSentences.push(candidate);
+    // Section-based summary if sections exist
+    if (this.sections.length > 1) {
+      for (const sec of this.sections.slice(0, 8)) {
+        output += `### ${sec.title}\n`;
+        const lines = sec.content.split('\n')
+          .map(l => l.trim())
+          .filter(l => this._isRealSentence(l) || l.startsWith('-'))
+          .slice(0, 3);
+        for (const l of lines) {
+          output += l.startsWith('-') ? `${l}\n` : `- ${l}\n`;
+        }
+        output += '\n';
+      }
+    } else {
+      // Chunk-based fallback
+      const overviewSentences = [];
+      for (const chunk of this.chunks) {
+        const chunkText = chunk.join(' ').toLowerCase();
+        const candidate = this.sentences.find(s =>
+          this._isRealSentence(s) &&
+          s.length >= 40 &&
+          chunkText.includes(s.toLowerCase().substring(0, Math.min(40, s.length)))
+        );
+        if (candidate) overviewSentences.push(candidate);
+      }
+      const realSentences = this.sentences.filter(s => this._isRealSentence(s));
+      const overviewSet = overviewSentences.length >= 3 ? overviewSentences.slice(0, 10) : realSentences.slice(0, 8);
+      for (const s of overviewSet) output += `- ${s}\n`;
+      output += '\n';
     }
 
-    // Fallback: first real sentences
-    const realSentences = this.sentences.filter(s => this._isRealSentence(s));
-    const overviewSet = overviewSentences.length >= 3
-      ? overviewSentences.slice(0, 12)
-      : realSentences.slice(0, 8);
-
-    for (const s of overviewSet) output += `- ${s}\n`;
-
-    // Key Definitions section (from across the whole document)
+    // Key Definitions section
     const defEntries = Object.entries(this.definitions);
     if (defEntries.length > 0) {
-      output += '\n## Key Definitions\n\n';
-      for (const [k, v] of defEntries.slice(0, 30)) {
-        output += `**${k}** — ${v}\n\n`;
+      output += '## Key Definitions\n\n';
+      for (const [k, v] of defEntries.slice(0, 35)) {
+        output += `**${k}** — ${v}.\n\n`;
       }
     }
 
-    // Key Terms section (high-frequency noun phrases appearing ≥ 2×)
+    // Key Terms section
     if (this.keyTerms.length > 0) {
-      output += '\n## Key Terms\n\n';
+      output += '## High-Yield Key Terms\n\n';
       output += this.keyTerms.slice(0, 30).map(t => `- ${t}`).join('\n');
       output += '\n';
     }
@@ -268,126 +430,155 @@ class TextAnalyzer {
     return output.trim();
   }
 
-  /* ─── Flashcards ─────────────────────────────────────────────────── */
+  /* ─── Flashcards Generation ────────────────────────────────────────── */
   generateFlashcards(min = 15) {
     const cards = [];
-    const seen  = new Set();
+    const seen = new Set();
 
-    const addCard = (q, a) => {
+    const addCard = (q, a, type = 'concept') => {
       if (!q || !a) return;
       const k = q.toLowerCase();
-      if (!seen.has(k)) { seen.add(k); cards.push({ question: q, answer: a }); }
+      if (!seen.has(k)) {
+        seen.add(k);
+        cards.push({ question: q, answer: a.replace(/[.]+$/, '') + '.', type });
+      }
     };
 
-    // 1. Definition-based cards — these have validated, meaningful definitions
+    // 1. Definition-based cards with smart entity-aware questions
     for (const [term, def] of Object.entries(this.definitions)) {
-      addCard(`What is ${term}?`, def.replace(/[.]+$/, '') + '.');
+      const q = this.formatQuestionForTerm(term, def);
+      const cardType = this.isPerson(term, def) ? 'person' : 'definition';
+      addCard(q, def, cardType);
     }
 
-    // 2. Key-term + definition cards (avoids duplicate if already added above)
-    for (const term of this.keyTerms) {
-      if (cards.length >= min * 4) break;
-      const defForTerm = this.definitions[term];
-      if (defForTerm) {
-        addCard(`Define "${term}".`, defForTerm.replace(/[.]+$/, '') + '.');
-      }
-    }
-
-    // 3. Fallback: real sentences sampled proportionally from the whole document
-    //    Convert each to a cloze-style question using the first clause.
+    // 2. Cloze & explanatory sentences from across whole document
     const sampled = this._sampleSentences(5);
     for (const s of sampled) {
-      if (cards.length >= min * 4) break;
-      // Only use proper explanatory sentences (not headings)
-      if (s.length > 50 && s.length < 400) {
-        // Build a question from the sentence by blanking the subject
-        const firstClause = s.split(/[,;]/)[0].trim();
-        const q = firstClause.length > 15
-          ? `Complete the following: "${firstClause}..."`
-          : s.split(/[.?!]/)[0].trim() + '?';
-        addCard(q, s);
+      if (cards.length >= min * 3) break;
+      if (s.length > 40 && s.length < 350) {
+        const parts = s.split(/[,;:]/);
+        if (parts.length > 1 && parts[0].trim().length > 18) {
+          const lead = parts[0].trim();
+          addCard(`What is true regarding "${lead}"?`, s, 'sentence');
+        } else {
+          addCard(`Explain the concept: "${s.substring(0, Math.min(60, s.length))}..."`, s, 'sentence');
+        }
       }
     }
 
-    // 4. Named-entity cards (supplementary, lower priority)
+    // 3. Named person cards if not already defined
     for (const name of this.names) {
-      if (cards.length >= min * 4) break;
-      // Only add person names that have at least two words
-      if (name.trim().split(/\s+/).length >= 2) {
-        addCard(`Who is ${name}?`, name);
+      if (cards.length >= min * 3) break;
+      if (name.split(/\s+/).length >= 2) {
+        addCard(`Who is ${name}?`, `A key historical/academic figure mentioned in the study material: ${name}`, 'person');
       }
     }
 
     return cards.slice(0, Math.max(min, cards.length));
   }
 
-  /* ─── Multiple Choice ─────────────────────────────────────────────── */
+  /* ─── Multiple Choice with Contextual Distractor Generation ───────── */
   generateMultipleChoice(min = 15) {
     const flashcards = this.generateFlashcards(min + 20);
-    // Build a rich answer pool from the FULL document
-    const answerPool = flashcards
-      .map(fc => this.shortenAnswer(fc.answer))
-      .filter(a => a && a.length > 10);
+
+    // Group cards by type so distractors match the question type!
+    const poolByType = {
+      person: [],
+      definition: [],
+      sentence: [],
+      concept: []
+    };
+
+    for (const fc of flashcards) {
+      const ans = this.shortenAnswer(fc.answer);
+      if (ans && ans.length > 5) {
+        const type = fc.type || 'definition';
+        if (!poolByType[type]) poolByType[type] = [];
+        poolByType[type].push(ans);
+      }
+    }
+
+    const generalPool = flashcards.map(fc => this.shortenAnswer(fc.answer)).filter(a => a && a.length > 5);
 
     const questions = [];
     for (const fc of flashcards) {
       if (questions.length >= min) break;
       const correct = this.shortenAnswer(fc.answer);
-      if (!correct || correct.length < 10) continue;
-      const pool = answerPool.filter(a => a !== correct);
-      shuffleArray(pool);
-      const distractors = pool.slice(0, 3);
+      if (!correct || correct.length < 5) continue;
+
+      const type = fc.type || 'definition';
+      let candidatePool = (poolByType[type] && poolByType[type].length >= 4) ? poolByType[type] : generalPool;
+      candidatePool = candidatePool.filter(a => a !== correct);
+
+      // Filter by length similarity if definition/sentence
+      if (correct.length > 30) {
+        const lengthSimilar = candidatePool.filter(a => Math.abs(a.length - correct.length) < 80);
+        if (lengthSimilar.length >= 3) candidatePool = lengthSimilar;
+      }
+
+      shuffleArray(candidatePool);
+      const distractors = candidatePool.slice(0, 3);
       if (distractors.length < 3) continue;
+
       const choices = [correct, ...distractors];
       shuffleArray(choices);
       questions.push({ question: fc.question, choices, correct_answer: correct });
     }
+
     return questions.slice(0, Math.max(min, questions.length));
   }
 
   /* ─── Fill in the Blank ───────────────────────────────────────────── */
   generateFillInTheBlank(min = 15) {
     const fibs = [];
-    const priority = Object.keys(this.definitions).concat(this.names).slice(0, 300);
-
-    // Use only real sentences from proportional document sampling
+    const targetTerms = Object.keys(this.definitions).concat(this.keyTerms, this.names).filter(t => t.length >= 3);
     const sampled = this._sampleSentences(6);
 
     for (const s of sampled) {
       if (fibs.length >= min * 2) break;
-      // Only use sentences long enough to be meaningful fill-in-the-blank
-      if (s.split(/\s+/).length < 6) continue;
+      if (s.split(/\s+/).length < 7) continue;
+
       let chosen = null;
-      for (const term of priority) {
-        if (term.length < 3) continue;
+      for (const term of targetTerms) {
         const re = new RegExp('\\b' + escapeRegex(term) + '\\b', 'i');
-        if (re.test(s)) { chosen = term; break; }
+        if (re.test(s)) {
+          chosen = term;
+          break;
+        }
       }
+
       if (!chosen) continue;
       const blanked = s.replace(new RegExp('\\b' + escapeRegex(chosen) + '\\b', 'i'), '_____');
-      if (blanked && blanked !== s) fibs.push({ question: blanked, correct_answer: chosen });
+      if (blanked && blanked !== s) {
+        fibs.push({ question: blanked, correct_answer: chosen });
+      }
     }
 
     return dedupeByKey(fibs, 'question').slice(0, Math.max(min, fibs.length));
   }
 
-  /* ─── Generate All ────────────────────────────────────────────────── */
   generateAll(min = 15) {
     return {
-      summary:           this.generateStudyGuide(),
-      flashcards:        this.generateFlashcards(min),
-      multiple_choice:   this.generateMultipleChoice(min),
+      summary: this.generateStudyGuide(),
+      flashcards: this.generateFlashcards(min),
+      multiple_choice: this.generateMultipleChoice(min),
       fill_in_the_blank: this.generateFillInTheBlank(min),
     };
   }
 }
 
-/* ─── Module-level helpers ─────────────────────────────────────────── */
-function escapeRegex(s)  { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-function shuffleArray(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+/* ─── Helpers ──────────────────────────────────────────────────────── */
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function shuffleArray(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 function dedupeByKey(items, key) {
   const seen = new Set();
-  const out  = [];
+  const out = [];
   for (const it of items) {
     const k = (it[key] || '').toLowerCase();
     if (!seen.has(k)) { seen.add(k); out.push(it); }

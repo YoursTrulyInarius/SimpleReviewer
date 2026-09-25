@@ -254,14 +254,16 @@ class TextAnalyzer {
 
         // Patterns that signal a definition sentence
         $patterns = [
+            // Markdown bold or bullet definition: **Term** — Definition or **Term**: Definition
+            '/^\s*(?:[-*•]\s+)?\*\*(.+?)\*\*\s*(?:[-:—–]|is|are|was|were|means)\s*(?:an\s+|a\s+|the\s+)?(.{10,400}?)\.?$/mu',
             // "X is a/an Y" or "X are Y"
-            '/^(?:The\s+|A\s+|An\s+)?([A-Z][a-zA-Z\s.]{2,50}?)\s+(?:is|are|was|were)\s+(?:a|an|the)?\s*(.{15,300}?)\.$/mu',
+            '/^(?:The\s+|A\s+|An\s+)?([A-Z][a-zA-Z\s.]{2,50}?)\s+(?:is|are|was|were)\s+(?:an\s+|a\s+|the\s+)?(.{12,350}?)\.$/mu',
             // "X refers to Y" / "X means Y" / "X is defined as Y"
-            '/^(?:The\s+)?([A-Z][a-zA-Z\s.]{2,50}?)\s+(?:refers to|means|is defined as|is known as|is called)\s+(.{10,300}?)\.$/mu',
+            '/^(?:The\s+)?([A-Z][a-zA-Z\s.]{2,50}?)\s+(?:refers to|means|is defined as|is known as|is called|denotes)\s+(.{10,350}?)\.$/mu',
             // "X - Y" or "X — Y" (dash definitions; after normalization, all dashes become " - ")
-            '/^([A-Z][a-zA-Z\s.]{2,40}?)\s*-\s*(.{15,300}?)\.?$/mu',
+            '/^([A-Z][a-zA-Z\s.]{2,45}?)\s*[-—–]\s*(.{12,350}?)\.?$/mu',
             // "X: Y"
-            '/^([A-Z][a-zA-Z\s.]{2,40}?):\s*(.{15,300}?)\.?$/mu',
+            '/^([A-Z][a-zA-Z\s.]{2,45}?):\s*(.{12,350}?)\.?$/mu',
         ];
 
         foreach ($this->sentences as $sentence) {
@@ -351,7 +353,7 @@ class TextAnalyzer {
         $definition = trim($definition);
         $definition = preg_replace('/[.]+$/', '', $definition);
         $definition = preg_replace('/^(?:is|are|was|were|refers to|means|is defined as|is known as|is called)\s+/i', '', $definition);
-        $definition = preg_replace('/^(?:a|an|the)\s+/i', '', $definition);
+        $definition = preg_replace('/^(?:an|a|the)\s+/i', '', $definition);
         $definition = trim($definition);
 
         if (strlen($definition) < 8) {
@@ -377,10 +379,10 @@ class TextAnalyzer {
             'achievements', 'author', 'engineer', 'scientist', 'historian',
             'artist', 'leader', 'founder', 'creator', 'inventor', 'researcher',
             'politician', 'president', 'governor', 'senator', 'minister',
-            'director', 'CEO', 'author', 'teacher', 'professor', 'doctor',
-            'judge', 'captain', 'bishop', 'poet', 'composer', 'composer',
+            'director', 'CEO', 'teacher', 'professor', 'doctor',
+            'judge', 'captain', 'bishop', 'poet', 'composer', 'developer', 'programmer',
             'architect', 'journalist', 'editor', 'filmmaker', 'actor', 'actress',
-            'coach', 'scientist', 'engineer', 'mathematician', 'philosopher'
+            'coach', 'mathematician', 'philosopher', 'physicist', 'biologist', 'chemist'
         ];
         return '/\b(?:' . implode('|', array_map('preg_quote', $words)) . ')\b/i';
     }
@@ -398,7 +400,8 @@ class TextAnalyzer {
             'overview', 'note', 'notes', 'diagram', 'example', 'method', 'analysis',
             'result', 'results', 'problem', 'solution', 'context', 'data', 'study',
             'image', 'graph', 'form', 'model', 'world war', 'world war i', 'world war ii',
-            'portrait', 'photograph', 'photo', 'painting', 'sketch', 'drawing', 'plate'
+            'portrait', 'photograph', 'photo', 'painting', 'sketch', 'drawing', 'plate',
+            'this', 'that', 'these', 'those', 'there', 'here', 'which', 'what', 'who'
         ];
 
         if (in_array($lower, $genericWords, true)) {
@@ -425,7 +428,12 @@ class TextAnalyzer {
     }
 
     private function hasPersonDefinitionIndicators(string $definition): bool {
-        return preg_match('/\b(?:born|died|born in|died in|married|wife|husband|son|daughter|career|life|achievements|author|engineer|scientist|historian|artist|leader|founder|creator|inventor|researcher|politician|president|governor|senator|minister|judge|doctor|professor|actor|actress|architect|journalist|editor|composer|poet|coach|served as|led|headed|founded|authored|wrote|published|created|known for|known as|was a|is a|was an|is an)\b/i', $definition) === 1;
+        // Exclude scientific/biological processes and technical mechanisms
+        if (preg_match('/\b(?:daughter cells|parent cell|cell division|sister chromatid|chromosome|organism|chemical|reaction|enzyme|protocol|algorithm|network|hardware|software|device|machine|system|equation|formula)\b/i', $definition)) {
+            return false;
+        }
+
+        return preg_match('/\b(?:person who|individual who|man who|woman who|someone who|author|engineer|scientist|historian|artist|leader|founder|creator|inventor|researcher|politician|president|governor|senator|minister|judge|doctor|professor|actor|actress|architect|journalist|editor|composer|poet|coach|developer|programmer|physicist|mathematician|philosopher|biologist|chemist|statesman|scholar|ruler|monarch|king|queen|emperor|general|who created|who developed|who invented|who wrote|who founded|who discovered|who formulated|who led|served as)\b/i', $definition) === 1;
     }
 
     private function isPersonTerm(string $term, string $definition = ''): bool {
@@ -440,6 +448,10 @@ class TextAnalyzer {
             return true;
         }
 
+        if ($definition !== '' && $this->hasPersonDefinitionIndicators($definition)) {
+            return true;
+        }
+
         foreach ($this->names as $name) {
             if ($name === $term || stripos($name, $term) === 0 || stripos($name, " $term") !== false) {
                 if ($definition !== '' && $this->hasPersonDefinitionIndicators($definition)) {
@@ -448,27 +460,16 @@ class TextAnalyzer {
             }
         }
 
-        if ($definition !== '' && $this->hasPersonDefinitionIndicators($definition)) {
-            return true;
-        }
-
         return false;
     }
 
-    /**
-     * Build a context blob from every sentence that mentions this name, so
-     * isPersonTerm() has something real to check for "born", "wrote",
-     * "scientist", "was a", etc. — instead of being called with an empty
-     * definition and defaulting to false for anyone without an explicit
-     * Dr./Mr./Prof. title in front of their name.
-     */
     private function getNameContext(string $name): string {
         $context = [];
         foreach ($this->sentences as $s) {
             if (stripos($s, $name) !== false) {
                 $context[] = $s;
             }
-            if (count($context) >= 5) break; // enough signal, keep it cheap
+            if (count($context) >= 5) break;
         }
         return implode(' ', $context);
     }
@@ -495,61 +496,41 @@ class TextAnalyzer {
     }
 
     private function isPersonWorkDescription(string $definition): bool {
-        return preg_match('/\b(?:known for|known as|works? in|worked in|was a|is a|was an|is an|served as|led|headed|founded|authored|wrote|published|created|engineer|scientist|artist|historian|politician|president|governor|senator|minister|judge|doctor|professor|actor|actress|architect|journalist|researcher|inventor|composer|poet|coach)\b/i', $definition) === 1;
+        return preg_match('/\b(?:known for|known as|works? in|worked in|was a|is a|was an|is an|served as|led|headed|founded|authored|wrote|published|created|engineer|scientist|artist|historian|politician|president|governor|senator|minister|judge|doctor|professor|actor|actress|architect|journalist|researcher|inventor|composer|poet|coach|developer|programmer)\b/i', $definition) === 1;
     }
 
     private function makeDefinitionQuestion(string $term, string $definition): string {
-        if ($this->isPersonTerm($term, $definition)) {
-            if ($this->isPersonWorkDescription($definition)) {
-                return $this->chooseQuestionTemplate([
-                    "What is $term known for?",
-                    "What does $term do?",
-                    "What work is $term known for?",
-                    "How is $term described in this text?",
-                    "What role does $term play in the report?"
-                ]);
-            }
+        $term = trim($term);
 
-            return $this->chooseQuestionTemplate([
-                "Who is $term?",
-                "What is $term known for?",
-                "What role does $term play in this text?",
-                "How is $term described in this report?",
-                "Why is $term important in this passage?"
-            ]);
+        if ($this->isPersonTerm($term, $definition)) {
+            $isPast = preg_match('/\b(?:was|died|born|served|developed|invented|discovered|founded|formulated|led|wrote)\b/i', $definition);
+            return $isPast ? "Who was $term?" : "Who is $term?";
         }
 
-        if (preg_match('/^\d{4}$/', $term)) {
-            return $this->chooseQuestionTemplate([
-                "What significant event is linked to $term?",
-                "What happened in $term?",
-                "Why is the year $term important in this report?",
-                "What does $term represent in this passage?"
-            ]);
+        if (preg_match('/^\d{4}$/', $term) || preg_match('/^\d{1,2}(?:st|nd|rd|th)\s+century$/i', $term)) {
+            return "What significant event occurred in $term?";
         }
 
         if ($this->isGenericLabel($term)) {
-            return $this->chooseQuestionTemplate([
-                "What does $term refer to in this report?",
-                "How is $term described in the text?",
-                "What does $term mean in this passage?"
-            ]);
+            return "What does $term refer to in this passage?";
         }
 
         if (preg_match('/%|\$|\d+\s+(?:percent|million|billion|trillion)/i', $term)) {
-            return $this->chooseQuestionTemplate([
-                "What does the figure $term represent in the report?",
-                "How is $term used in this passage?",
-                "Why is $term important in the study material?"
-            ]);
+            return "What does the figure $term represent in the material?";
         }
 
-        return $this->chooseQuestionTemplate([
-            "How is $term defined in the text?",
-            "What does $term mean in this report?",
-            "Why is $term important in this passage?",
-            "What key idea does $term represent?"
-        ]);
+        // Check if process or method
+        if (preg_match('/\b(process|method|cycle|mechanism|procedure|technique|algorithm)\b/i', $term) ||
+            preg_match('/\b(process by which|mechanism of|steps involved in|method used to)\b/i', $definition)) {
+            return "How does the process of $term work?";
+        }
+
+        // Plural check
+        if (preg_match('/(?:ies|es|[a-rt-z]s)$/i', $term) && !preg_match('/(?:photosynthesis|mitosis|meiosis|status|basis|analysis|hypothesis|synthesis)$/i', $term)) {
+            return "What are $term?";
+        }
+
+        return "What is $term?";
     }
 
     private function summarizeText(string $text, int $maxChars = 140): string {
@@ -931,7 +912,28 @@ class TextAnalyzer {
             $correct = $this->shortenAnswer($fc['answer']);
             if (strlen($correct) < 8) continue;
 
-            $pool = array_filter($answerPool, fn($a) => $a !== $correct);
+            // Extract key term from question to avoid giveaway distractors
+            $subject = '';
+            if (preg_match('/(?:Who was|Who is|What is|What was|What are|process of)\s+([^?]+)\?/i', $fc['question'], $qm)) {
+                $subject = trim($qm[1]);
+            }
+
+            $pool = array_filter($answerPool, function($a) use ($correct, $subject) {
+                if ($a === $correct) return false;
+                // Exclude near duplicates or sub-strings
+                if (stripos($a, $correct) !== false || stripos($correct, $a) !== false) return false;
+                // Exclude if distractor mentions the question subject
+                if ($subject !== '' && stripos($a, $subject) !== false) return false;
+                return true;
+            });
+
+            // If we have enough length-matched distractors, prefer them
+            $cLen = strlen($correct);
+            $lengthMatched = array_filter($pool, fn($a) => abs(strlen($a) - $cLen) < 90);
+            if (count($lengthMatched) >= 3) {
+                $pool = $lengthMatched;
+            }
+
             $pool = array_values(array_unique($pool));
             shuffle($pool);
             $distractors = array_slice($pool, 0, 3);
