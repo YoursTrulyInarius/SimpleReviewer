@@ -1121,6 +1121,7 @@ async function initReviewerPage() {
         initFlashcards();
         initMultipleChoiceQuiz();
         initFillBlankQuiz();
+        initVocabularyTab(reviewer.flashcards || [], reviewer.summary || '');
         initKeyboardShortcuts();
 
         if (loadingEl) loadingEl.classList.add('d-none');
@@ -1422,7 +1423,7 @@ function initKeyboardShortcuts() {
         // Do not trigger if typing in an input or textarea
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
-        const deckTab = document.getElementById('tab-flashcards');
+        const deckTab = document.getElementById('tab-flashcards-tab');
         const isDeckActive = deckTab && deckTab.classList.contains('active');
         if (!isDeckActive) return;
 
@@ -1441,6 +1442,107 @@ function initKeyboardShortcuts() {
             shuffleFlashcards();
         }
     });
+}
+
+/* ==========================================================================
+   Vocabulary Tab
+   ========================================================================== */
+let allVocabTerms = [];
+
+function initVocabularyTab(flashcards, summaryText) {
+    // Build vocabulary from flashcards (definition-type entries) and summary
+    const vocabMap = {};
+
+    // Extract from flashcards that are definition/concept type
+    for (const card of flashcards) {
+        const q = card.question || '';
+        const a = card.answer || '';
+        // Question patterns: "What is X?", "What are X?", "Who is X?", "Who was X?"
+        const m = q.match(/^(?:What is|What are|Who is|Who was|How does the process of)\s+(.+?)\??$/);
+        if (m && a && a.length > 8) {
+            const term = m[1].trim().replace(/\?$/, '');
+            if (term.length >= 2 && term.length <= 60 && !vocabMap[term.toLowerCase()]) {
+                vocabMap[term.toLowerCase()] = { term, definition: a.replace(/\.+$/, '') };
+            }
+        }
+    }
+
+    // Also extract **Term** — Definition patterns from study guide text
+    const defMatches = summaryText.matchAll(/\*\*(.+?)\*\*\s*[—\-–]\s*(.+?)(?=\n|\*\*|$)/g);
+    for (const dm of defMatches) {
+        const term = dm[1].trim();
+        const def = dm[2].trim().replace(/\.+$/, '');
+        if (term.length >= 2 && term.length <= 60 && def.length >= 8 && !vocabMap[term.toLowerCase()]) {
+            vocabMap[term.toLowerCase()] = { term, definition: def };
+        }
+    }
+
+    allVocabTerms = Object.values(vocabMap).sort((a, b) => a.term.localeCompare(b.term));
+
+    const badge = document.getElementById('vocab-count-badge');
+    if (badge) badge.textContent = allVocabTerms.length;
+
+    renderVocabularyList(allVocabTerms);
+
+    const searchInput = document.getElementById('vocab-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.trim().toLowerCase();
+            if (!q) {
+                renderVocabularyList(allVocabTerms);
+            } else {
+                renderVocabularyList(allVocabTerms.filter(v =>
+                    v.term.toLowerCase().includes(q) || v.definition.toLowerCase().includes(q)
+                ));
+            }
+        });
+    }
+}
+
+function renderVocabularyList(terms) {
+    const container = document.getElementById('vocab-list');
+    const emptyEl = document.getElementById('vocab-empty');
+    if (!container) return;
+
+    if (!terms.length) {
+        container.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        container.appendChild(emptyEl);
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    // Group by first letter
+    const groups = {};
+    for (const v of terms) {
+        const letter = v.term[0].toUpperCase();
+        if (!groups[letter]) groups[letter] = [];
+        groups[letter].push(v);
+    }
+
+    const letters = Object.keys(groups).sort();
+    let html = '';
+    for (const letter of letters) {
+        html += `
+            <div class="mb-4">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="fw-bold text-primary" style="font-family: var(--font-heading); font-size: 1.6rem; line-height:1; min-width: 28px;">${escapeHtml(letter)}</span>
+                    <hr class="flex-grow-1 opacity-25 my-0">
+                </div>
+                <div class="row g-2">
+                    ${groups[letter].map(v => `
+                        <div class="col-md-6">
+                            <div class="definition-box p-3">
+                                <div class="definition-term mb-1">${escapeHtml(v.term)}</div>
+                                <div class="text-muted small">${escapeHtml(v.definition)}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
 }
 
 /* ==========================================================================

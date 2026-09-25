@@ -584,11 +584,24 @@ h1, h2, h3, h4, h5, h6 {
 
 .tab-badge {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
-    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.1em 0.5em;
     border-radius: 9999px;
+    background: var(--primary-color);
+    color: #ffffff;
+    min-width: 18px;
+    text-align: center;
+    line-height: 1.6;
+    display: inline-block;
+    margin-left: 2px;
+    vertical-align: middle;
+    transition: background 0.2s ease;
+}
+
+.workspace-tabs .nav-link.active .tab-badge {
     background: rgba(255, 255, 255, 0.25);
-    color: inherit;
+    color: #ffffff;
 }
 
 /* ==========================================================================
@@ -891,4 +904,84 @@ footer {
     padding: 1.5rem 0;
     color: var(--text-muted);
     font-size: 0.88rem;
+}
+
+/* ==========================================================================
+   Vocabulary Tab
+   ========================================================================== */
+#tab-vocab .definition-box {
+    border-left-width: 3px;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 0;
+    transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+
+#tab-vocab .definition-box:hover {
+    transform: translateY(-2px) translateX(1px);
+    box-shadow: var(--card-shadow-hover);
+    border-left-color: var(--accent-cyan);
+}
+
+#tab-vocab .definition-term {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+/* Alphabet letter divider */
+#tab-vocab .vocab-letter-header {
+    font-family: var(--font-heading);
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    min-width: 32px;
+    line-height: 1;
+    background: var(--primary-light);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+/* Vocab search input */
+#vocab-search-input {
+    background: var(--card-surface-subtle);
+    border: 1.5px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-color);
+    font-family: var(--font-body);
+    transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+
+#vocab-search-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--border-color-glow);
+    outline: none;
+    background: var(--card-bg);
+}
+
+.workspace-tabs {
+    flex-wrap: wrap;
+}
+
+.workspace-tabs .nav-link {
+    font-size: 0.85rem;
+    padding: 0.55rem 1rem;
+}
+
+@media (max-width: 767px) {
+    .workspace-tabs {
+        width: 100%;
+    }
+
+    .workspace-tabs .nav-link {
+        flex: 1 1 auto;
+        text-align: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        padding: 0.5rem 0.5rem;
+    }
 }

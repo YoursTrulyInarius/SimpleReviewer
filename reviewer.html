@@ -102,8 +102,14 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-fib-tab" data-bs-toggle="pill" data-bs-target="#tab-fib" type="button" role="tab">
-                            <i class="bi bi-pencil-fill"></i> Fill in the Blank 
+                            <i class="bi bi-pencil-fill"></i> Fill in Blank 
                             <span class="tab-badge" id="fib-count-badge">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-vocab-tab" data-bs-toggle="pill" data-bs-target="#tab-vocab" type="button" role="tab">
+                            <i class="bi bi-alphabet"></i> Vocabulary
+                            <span class="tab-badge" id="vocab-count-badge">0</span>
                         </button>
                     </li>
                 </ul>
@@ -112,7 +118,7 @@
                 <div class="d-none d-md-flex align-items-center gap-2 px-3 py-1.5 rounded-3" style="background: var(--card-surface-subtle); border: 1px solid var(--border-color); font-size: 0.85rem;">
                     <i class="bi bi-trophy-fill text-warning"></i>
                     <span class="fw-semibold">Session Mastery:</span>
-                    <span class="fw-bold text-success" id="mastery-percent">100%</span>
+                    <span class="fw-bold text-success" id="mastery-percent">0%</span>
                 </div>
             </div>
 
@@ -296,6 +302,27 @@
                             <button id="fib-reset-btn" class="btn btn-light btn-lg px-4">
                                 <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Quiz
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Vocabulary Tab -->
+                <div class="tab-pane fade" id="tab-vocab" role="tabpanel">
+                    <div class="study-guide-container">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                            <div>
+                                <h4 class="fw-bold mb-0"><i class="bi bi-alphabet text-primary me-2"></i>Vocabulary Glossary</h4>
+                                <small class="text-muted">Key terms and definitions extracted from your document</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="text" id="vocab-search-input" class="form-control form-control-sm" placeholder="Search terms..." style="max-width: 200px;">
+                            </div>
+                        </div>
+                        <div id="vocab-list">
+                            <div class="text-center py-5 text-muted" id="vocab-empty" style="display:none;">
+                                <i class="bi bi-journal-x fs-1 opacity-25 d-block mb-2"></i>
+                                No vocabulary terms were extracted from this document.
+                            </div>
                         </div>
                     </div>
                 </div>

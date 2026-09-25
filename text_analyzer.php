@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Simple Reviewer - Text Analyzer Engine
  * Pure PHP NLP engine. No external API required.
@@ -254,16 +254,20 @@ class TextAnalyzer {
 
         // Patterns that signal a definition sentence
         $patterns = [
-            // Markdown bold or bullet definition: **Term** — Definition or **Term**: Definition
-            '/^\s*(?:[-*•]\s+)?\*\*(.+?)\*\*\s*(?:[-:—–]|is|are|was|were|means)\s*(?:an\s+|a\s+|the\s+)?(.{10,400}?)\.?$/mu',
-            // "X is a/an Y" or "X are Y"
+            // 1. Markdown bold/bullet definition: **Term** - Def or **Term**: Def
+            '/^\s*(?:[-*]\s+)?\*\*(.+?)\*\*\s*(?:[-:]|is|are|was|were|means)\s*(?:an\s+|a\s+|the\s+)?(.{10,400}?)\.?$/mu',
+            // 2. "X is a/an Y" or "X are Y" (sentence start)
             '/^(?:The\s+|A\s+|An\s+)?([A-Z][a-zA-Z\s.]{2,50}?)\s+(?:is|are|was|were)\s+(?:an\s+|a\s+|the\s+)?(.{12,350}?)\.$/mu',
-            // "X refers to Y" / "X means Y" / "X is defined as Y"
-            '/^(?:The\s+)?([A-Z][a-zA-Z\s.]{2,50}?)\s+(?:refers to|means|is defined as|is known as|is called|denotes)\s+(.{10,350}?)\.$/mu',
-            // "X - Y" or "X — Y" (dash definitions; after normalization, all dashes become " - ")
-            '/^([A-Z][a-zA-Z\s.]{2,45}?)\s*[-—–]\s*(.{12,350}?)\.?$/mu',
-            // "X: Y"
+            // 3. "X refers to Y" / "X means Y" / "X is defined as Y"
+            '/^(?:The\s+)?([A-Z][a-zA-Z\s.]{2,50}?)\s+(?:refers to|means|is defined as|is known as|is called|denotes|consists of)\s+(.{10,350}?)\.$/mu',
+            // 4. "X - Y" (dash definitions)
+            '/^([A-Z][a-zA-Z\s.]{2,45}?)\s*-\s*(.{12,350}?)\.?$/mu',
+            // 5. "X: Y" (colon definitions)
             '/^([A-Z][a-zA-Z\s.]{2,45}?):\s*(.{12,350}?)\.?$/mu',
+            // 6. Mid-sentence "X, which is/which are/defined as..."
+            '/([A-Z][a-zA-Z\s]{3,45}?)\s*,\s+(?:which is|which are|defined as|known as|also called)\s+(?:an?\s+)?(.{12,300}?)(?:\.|,|;|$)/mu',
+            // 7. Parenthetical: "Term (also known as / i.e. ..."
+            '/([A-Z][a-zA-Z\s]{2,40}?)\s+\((?:also\s+)?(?:known\s+as|called|i\.e\.?[,]?)\s+(.{5,120}?)\)/mu',
         ];
 
         foreach ($this->sentences as $sentence) {
@@ -288,19 +292,27 @@ class TextAnalyzer {
 
         // Additional pass: detect headings followed by list/bullet lines and
         // convert them into a combined definition for the heading.
+        // A true heading: short (1-5 words), no sentence-ending punctuation, uppercase start,
+        // NOT a conjunction/preposition start, NOT a verb-heavy phrase.
         $lines = preg_split('/\r?\n/', $this->rawText);
         $lineCount = count($lines);
         for ($i = 0; $i < $lineCount; $i++) {
             $line = trim($lines[$i]);
             if ($line === '') continue;
 
-            $words = str_word_count($line);
+            // Strip markdown # headers
+            $lineClean = preg_replace('/^#{1,4}\s+/', '', $line);
+
+            $words = str_word_count($lineClean);
             $isHeading = $words >= 1
-                && $words <= 10
-                && !preg_match('/[.!?]$/', $line)
-                && preg_match('/^[A-Z0-9]/', $line)
-                && !preg_match('/^\d+\.\s/', $line)
-                && strlen($line) >= 3;
+                && $words <= 7
+                && !preg_match('/[.!?,;]$/', $lineClean)
+                && preg_match('/^[A-Z]/', $lineClean)
+                && !preg_match('/^\d+\.\s/', $lineClean)
+                && strlen($lineClean) >= 3
+                && strlen($lineClean) <= 60
+                && !preg_match('/^(This|That|These|Those|However|Therefore|Furthermore|Moreover|Also|Because|Although|Since|When|While|If|Unless|Until)\b/i', $lineClean)
+                && !preg_match('/\b(is|are|was|were|have|has|had|will|would|could|should|must|shall)\b/', $lineClean);
 
             if (!$isHeading) continue;
 
@@ -401,13 +413,28 @@ class TextAnalyzer {
             'result', 'results', 'problem', 'solution', 'context', 'data', 'study',
             'image', 'graph', 'form', 'model', 'world war', 'world war i', 'world war ii',
             'portrait', 'photograph', 'photo', 'painting', 'sketch', 'drawing', 'plate',
-            'this', 'that', 'these', 'those', 'there', 'here', 'which', 'what', 'who'
+            'this', 'that', 'these', 'those', 'there', 'here', 'which', 'what', 'who',
+            // Common sentence starters that slip through patterns
+            'however', 'therefore', 'moreover', 'furthermore', 'additionally',
+            'consequently', 'finally', 'additionally', 'in addition', 'as a result',
+            'for example', 'for instance', 'in other words', 'on the other hand',
+            'according to', 'based on', 'in contrast', 'in conclusion', 'in summary',
+            // Common document meta-terms
+            'definition', 'definitions', 'terms', 'key terms', 'glossary',
+            'question', 'answer', 'review', 'reviewer', 'references', 'sources',
+            'list', 'types', 'examples', 'characteristics', 'components', 'elements',
+            'factors', 'aspects', 'parts', 'features', 'properties', 'functions',
+            'purpose', 'objective', 'goal', 'aim', 'topic', 'subject', 'content',
+            // Very short words that are not useful terms alone
+            'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            'it', 'its', 'their', 'they', 'we', 'our', 'you', 'your'
         ];
 
         if (in_array($lower, $genericWords, true)) {
             return true;
         }
 
+        // Starts with a common generic word followed by a number or another word
         if (preg_match('/^(figure|table|slide|chapter|section|appendix|page|item)\s*\d+$/i', $term)) {
             return true;
         }
@@ -417,6 +444,19 @@ class TextAnalyzer {
         }
 
         if (preg_match('/^\d+$/', $term) && strlen($term) < 4) {
+            return true;
+        }
+
+        // Single words that are too common to be meaningful key terms on their own
+        $commonSingleWords = [
+            'also', 'both', 'each', 'some', 'most', 'many', 'other', 'another',
+            'first', 'second', 'third', 'last', 'next', 'previous', 'following',
+            'new', 'old', 'high', 'low', 'large', 'small', 'great', 'little',
+            'good', 'bad', 'same', 'different', 'various', 'several', 'main',
+            'major', 'minor', 'general', 'specific', 'common', 'special', 'particular',
+            'important', 'significant', 'basic', 'simple', 'complex', 'similar'
+        ];
+        if (strpos($term, ' ') === false && in_array($lower, $commonSingleWords, true)) {
             return true;
         }
 
@@ -644,18 +684,22 @@ class TextAnalyzer {
             $line = trim($line);
             if (empty($line)) continue;
 
-            $words     = str_word_count($line);
+            $lineClean = preg_replace('/^#{1,4}\s+/', '', $line);
+            $words = str_word_count($lineClean);
             $isHeading = $words >= 1
-                && $words <= 10
-                && !preg_match('/[.!?,;]$/', $line)
-                && preg_match('/^[A-Z0-9]/', $line)
-                && !preg_match('/^\d+\.\s/', $line)
-                && strlen($line) >= 3;
+                && $words <= 8
+                && !preg_match('/[.!?,;]$/', $lineClean)
+                && preg_match('/^[A-Z0-9]/', $lineClean)
+                && !preg_match('/^\d+\.\s/', $lineClean)
+                && strlen($lineClean) >= 3
+                && strlen($lineClean) <= 70
+                && !preg_match('/^(This|That|These|Those|However|Therefore|Furthermore|Moreover|Also|Because|Although|Since|When|While|If|Unless|Until|For|But|And|Or|So)\b/i', $lineClean)
+                && !preg_match('/\b(is|are|was|were|have|has|had|will|would|could|should|must|shall|does|do|did)\b/', $lineClean);
 
             if ($isHeading && !empty($currentLines)) {
                 $sections[$currentHeading][] = implode(' ', $currentLines);
                 $currentLines = [];
-                $currentHeading = $line;
+                $currentHeading = $lineClean;
             } elseif (!$isHeading) {
                 $currentLines[] = $line;
             }
