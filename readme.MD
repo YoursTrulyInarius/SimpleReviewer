@@ -1,5 +1,5 @@
 # Simple Reviewer
-a
+
 Simple Reviewer is a personal, local-first study tool that turns lecture notes and documents into structured study materials. It extracts text in the browser, analyzes it with a local NLP engine, and saves generated reviewer decks in MySQL.
 
 ## Current Features
